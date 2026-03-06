@@ -270,6 +270,7 @@ const supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_
 /* Chat Setup */
 let currentUser = null;
 const MAX_CHARS = 4000;
+let messageChannel = null; // store channel reference
 
 const sensitiveWords = [
 "fuck","fucking","fucker","shitass","asshole","bitch","bastard",
@@ -315,7 +316,7 @@ async function loadInitialMessages(){
   const { data, error } = await supabaseClient
     .from('messages')
     .select('name, content, created_at')
-    .order('created_at',{ ascending:true }) // ascending to show oldest first
+    .order('created_at',{ ascending:true })
     .limit(120);
 
   if(error) return console.error('Error loading messages:', error);
@@ -377,16 +378,23 @@ function isNearBottom(){
 }
 
 function subscribeRealtime(){
-  supabaseClient.channel('public:messages')
-    .on('postgres_changes',{
-      event:'INSERT',
-      schema:'public',
-      table:'messages'
-    }, payload => {
-      payload.new.content = filterSensitiveContent(payload.new.content);
-      if(payload.new.name !== currentUser) addMessage(payload.new);
-    })
-    .subscribe();
+  // Keep reference to avoid garbage collection
+  messageChannel = supabaseClient.channel('messages_channel')
+    .on(
+      'postgres_changes',
+      {
+        event: 'INSERT',
+        schema: 'public',
+        table: 'messages'
+      },
+      payload => {
+        payload.new.content = filterSensitiveContent(payload.new.content);
+        if(payload.new.name !== currentUser) addMessage(payload.new);
+      }
+    )
+    .subscribe(status => {
+      if(status === 'SUBSCRIBED') console.log('Realtime messages subscribed');
+    });
 }
 </script>
 </body>
