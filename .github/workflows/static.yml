@@ -1,0 +1,393 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>SPQRord - Chat</title>
+
+<style>
+:root{
+--primary:#0084ff;
+--primary-dark:#006edc;
+--bg:#f0f2f5;
+--surface:white;
+--text:#111;
+--text-secondary:#333;
+--received-bg:#e5e5ea;
+--received-text:black;
+--border:#ddd;
+--time-sent:#e0e0e0;
+--time-received:#666;
+}
+
+[data-theme="dark"]{
+--primary:#4095ff;
+--primary-dark:#2b7fff;
+--bg:#0f1117;
+--surface:#1a1d24;
+--text:#e0e0e0;
+--text-secondary:#bbb;
+--received-bg:#2a2f38;
+--received-text:#e8e8e8;
+--border:#333;
+--time-sent:#a0c0ff;
+--time-received:#aaa;
+}
+
+*{box-sizing:border-box;margin:0;padding:0;}
+
+body{
+font-family:system-ui,sans-serif;
+background:var(--bg);
+height:100vh;
+display:flex;
+flex-direction:column;
+overflow:hidden;
+color:var(--text);
+transition:background .25s,color .25s;
+}
+
+#theme-toggle{
+position:fixed;
+top:12px;
+right:16px;
+width:38px;
+height:38px;
+border-radius:50%;
+background:rgba(0,0,0,.07);
+border:1px solid var(--border);
+color:var(--text);
+font-size:1.1rem;
+cursor:pointer;
+display:flex;
+align-items:center;
+justify-content:center;
+z-index:1000;
+}
+
+#nickname-screen{
+flex:1;
+display:flex;
+flex-direction:column;
+justify-content:center;
+align-items:center;
+gap:24px;
+padding:20px;
+}
+
+#update-popup{
+display:none;
+position:fixed;
+top:50%;
+left:50%;
+transform:translate(-50%,-50%);
+background:var(--surface);
+border-radius:16px;
+box-shadow:0 10px 30px rgba(0,0,0,.25);
+padding:24px;
+width:90%;
+max-width:380px;
+z-index:999;
+border:1px solid var(--border);
+}
+
+#ok-btn{
+margin-top:20px;
+padding:10px;
+background:var(--primary);
+color:white;
+border:none;
+border-radius:12px;
+font-weight:600;
+cursor:pointer;
+width:100%;
+}
+
+#chat-container{
+display:none;
+flex:1;
+flex-direction:column;
+overflow:hidden;
+}
+
+#messages-wrapper{
+flex:1;
+overflow-y:auto;
+padding:16px;
+background:var(--surface);
+}
+
+#messages{
+display:flex;
+flex-direction:column;
+min-height:100%;
+}
+
+.message{
+margin:8px 0;
+padding:10px 14px;
+border-radius:18px;
+max-width:80%;
+word-wrap:break-word;
+font-size:15.5px;
+line-height:1.4;
+}
+
+.message.sent{
+background:var(--primary);
+color:white;
+margin-left:auto;
+border-bottom-right-radius:5px;
+}
+
+.message.received{
+background:var(--received-bg);
+color:var(--received-text);
+margin-right:auto;
+border-bottom-left-radius:5px;
+}
+
+.message .time{
+font-size:.75rem;
+opacity:.7;
+margin-bottom:2px;
+}
+
+.message .name{
+font-weight:600;
+font-size:.85rem;
+margin-bottom:4px;
+color:var(--text-secondary);
+}
+
+#input-area{
+padding:12px 16px;
+background:var(--surface);
+border-top:1px solid var(--border);
+}
+
+form{
+display:flex;
+gap:10px;
+max-width:900px;
+margin:0 auto;
+}
+
+input[type="text"]{
+flex:1;
+padding:13px 18px;
+border:1px solid var(--border);
+border-radius:24px;
+font-size:16px;
+outline:none;
+background:var(--surface);
+color:var(--text);
+}
+
+button{
+padding:0 28px;
+background:var(--primary);
+color:white;
+border:none;
+border-radius:24px;
+font-weight:600;
+cursor:pointer;
+}
+
+button:hover{
+background:var(--primary-dark);
+}
+
+h1{
+font-size:2.2rem;
+color:var(--text-secondary);
+}
+</style>
+</head>
+
+<body>
+
+<button id="theme-toggle">☀️</button>
+
+<div id="nickname-screen">
+<h1>SPQRord</h1>
+<input type="text" id="nickname" placeholder="Your name…" autocomplete="off"/>
+<button onclick="showUpdate()">Join</button>
+</div>
+
+<div id="update-popup">
+<h3>Updates & News</h3>
+<p><strong>1.2.1 Update! Fixed:</strong></p>
+<p>4000 Maximum Character Limit</p>
+<p>Inappropriate Words Blocked</p>
+<p>Added Message Timestamps</p>
+<p>Minor Bug Fixes</p>
+<button id="ok-btn" onclick="enterChat()">Ok</button>
+</div>
+
+<div id="chat-container">
+<div id="messages-wrapper">
+<div id="messages"></div>
+</div>
+
+<div id="input-area">
+<form id="chat-form">
+<input type="text" id="message" placeholder="Type a message…" autocomplete="off"/>
+<button type="submit">Send</button>
+</form>
+</div>
+</div>
+
+<!-- Supabase JS -->
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+
+<script>
+/* Theme Handling */
+const themeToggle = document.getElementById('theme-toggle');
+const html = document.documentElement;
+
+function setTheme(theme){
+  html.setAttribute('data-theme', theme);
+  themeToggle.textContent = theme === 'dark' ? '☀️' : '🌙';
+  localStorage.setItem('theme', theme);
+}
+
+const saved = localStorage.getItem('theme');
+if(saved) setTheme(saved);
+else if(window.matchMedia("(prefers-color-scheme: dark)").matches) setTheme("dark");
+
+themeToggle.onclick = ()=>{
+  const current = html.getAttribute('data-theme') || 'light';
+  setTheme(current === 'dark' ? 'light' : 'dark');
+}
+
+/* Supabase Config */
+const SUPABASE_URL = 'https://yrtqjhtyaguersnatqbe.supabase.co';
+const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InlydHFqaHR5YWd1ZXJzbmF0cWJlIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzI3Mzc3NjUsImV4cCI6MjA4ODMxMzc2NX0.EABgCVRaTm0YhIOTUJmxtHdSqelTI-VNH6xI8tqjhV8';
+
+const supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+
+/* Chat Setup */
+let currentUser = null;
+const MAX_CHARS = 4000;
+
+const sensitiveWords = [
+"fuck","fucking","fucker","shitass","asshole","bitch","bastard",
+"dick","pussy","cunt","nigger","nigga","whore","slut","dickhead",
+"motherfucker","cock","piss","twat","wanker","cocksucker"
+];
+
+const messagesDiv = document.getElementById("messages");
+const wrapper = document.getElementById("messages-wrapper");
+const form = document.getElementById("chat-form");
+const input = document.getElementById("message");
+
+function escapeHTML(str){
+  return str.replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;");
+}
+
+function showUpdate(){
+  const nick = document.getElementById("nickname").value.trim();
+  if(!nick) return alert("Enter a name");
+  currentUser = nick;
+  document.getElementById("nickname-screen").style.display = "none";
+  document.getElementById("update-popup").style.display = "block";
+}
+
+function enterChat(){
+  document.getElementById("update-popup").style.display = "none";
+  document.getElementById("chat-container").style.display = "flex";
+  loadInitialMessages();
+  subscribeRealtime();
+}
+
+function formatTime(ts){
+  const d = ts ? new Date(ts) : new Date();
+  return d.getHours().toString().padStart(2,"0") + ":" + d.getMinutes().toString().padStart(2,"0");
+}
+
+function filterSensitiveContent(text){
+  const regex = new RegExp("\\b("+sensitiveWords.join("|")+")\\b","gi");
+  return text.replace(regex,"*****");
+}
+
+async function loadInitialMessages(){
+  const { data, error } = await supabaseClient
+    .from('messages')
+    .select('name, content, created_at')
+    .order('created_at',{ ascending:true }) // ascending to show oldest first
+    .limit(120);
+
+  if(error) return console.error('Error loading messages:', error);
+
+  data.forEach(row => {
+    row.content = filterSensitiveContent(row.content);
+    addMessage(row);
+  });
+
+  scrollBottom();
+}
+
+function addMessage(row){
+  const div = document.createElement("div");
+  div.className = "message " + (row.name === currentUser ? "sent" : "received");
+  const time = row.created_at ? formatTime(row.created_at) : formatTime();
+
+  div.innerHTML = `
+    <div class="time">${time}</div>
+    <div class="name">${escapeHTML(row.name)}</div>
+    <div>${escapeHTML(row.content)}</div>
+  `;
+
+  messagesDiv.appendChild(div);
+  if(isNearBottom()) scrollBottom();
+}
+
+form.addEventListener("submit", async e => {
+  e.preventDefault();
+  let content = input.value.trim();
+  if(!content) return;
+
+  if(content.length > MAX_CHARS){
+    alert(`Maximum ${MAX_CHARS} characters allowed!`);
+    return;
+  }
+
+  content = filterSensitiveContent(content);
+  addMessage({name: currentUser, content});
+  input.value = '';
+  input.focus();
+
+  const { error } = await supabaseClient
+    .from('messages')
+    .insert({ name: currentUser, content });
+
+  if(error){
+    console.error('Error sending message:', error);
+    alert('Failed to send message');
+  }
+});
+
+function scrollBottom(){
+  wrapper.scrollTop = wrapper.scrollHeight;
+}
+
+function isNearBottom(){
+  return wrapper.scrollHeight - wrapper.scrollTop - wrapper.clientHeight < 150;
+}
+
+function subscribeRealtime(){
+  supabaseClient.channel('public:messages')
+    .on('postgres_changes',{
+      event:'INSERT',
+      schema:'public',
+      table:'messages'
+    }, payload => {
+      payload.new.content = filterSensitiveContent(payload.new.content);
+      if(payload.new.name !== currentUser) addMessage(payload.new);
+    })
+    .subscribe();
+}
+</script>
+</body>
+</html>
