@@ -4,17 +4,13 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Realtime Chat</title>
-
 <style>
-
 :root{
 --primary:#0084ff;
 --primary-dark:#006edc;
 --bg:#f0f2f5;
 }
-
 *{box-sizing:border-box;margin:0;padding:0;}
-
 body{
 font-family:system-ui,sans-serif;
 background:var(--bg);
@@ -24,9 +20,7 @@ flex-direction:column;
 overflow:hidden;
 color:#111;
 }
-
 /* UPDATE SCREEN */
-
 #update-screen{
 flex:1;
 display:flex;
@@ -37,9 +31,7 @@ gap:20px;
 padding:40px;
 text-align:left;
 }
-
 /* LOGIN */
-
 #nickname-screen{
 display:none;
 flex:1;
@@ -48,16 +40,13 @@ justify-content:center;
 align-items:center;
 gap:20px;
 }
-
 /* CHAT */
-
 #chat-container{
 display:none;
 flex:1;
 flex-direction:column;
 overflow:hidden;
 }
-
 #messages-wrapper{
 flex:1;
 overflow-y:auto;
@@ -65,12 +54,10 @@ padding:16px;
 background:white;
 scroll-behavior:smooth;
 }
-
 #messages{
 display:flex;
 flex-direction:column;
 }
-
 .message{
 margin:8px 0;
 padding:10px 14px;
@@ -80,23 +67,20 @@ word-wrap:break-word;
 font-size:15px;
 animation:fadeIn .2s ease;
 }
-
 .message.sent{
 background:var(--primary);
 color:white;
 margin-left:auto;
 }
-
 .message.received{
 background:#e5e5ea;
+margin-right:auto;
 }
-
 .name{
 font-size:12px;
 font-weight:600;
 margin-bottom:3px;
 }
-
 .time-btn{
 font-size:10px;
 padding:2px 6px;
@@ -106,18 +90,15 @@ margin-bottom:3px;
 background:rgba(0,0,0,0.1);
 cursor:pointer;
 }
-
 .message.sent .time-btn{
 background:rgba(255,255,255,0.25);
 color:white;
 }
-
 .reactions{
 margin-top:5px;
 display:flex;
 gap:6px;
 }
-
 .reaction-btn{
 cursor:pointer;
 font-size:14px;
@@ -126,24 +107,20 @@ border-radius:10px;
 background:rgba(0,0,0,0.1);
 user-select:none;
 }
-
 .typing{
 font-size:12px;
 opacity:.7;
 padding:5px;
 }
-
 #input-area{
 padding:10px;
 border-top:1px solid #ddd;
 background:white;
 }
-
 form{
 display:flex;
 gap:10px;
 }
-
 input{
 flex:1;
 padding:12px;
@@ -151,7 +128,6 @@ border-radius:20px;
 border:1px solid #ddd;
 font-size:16px;
 }
-
 button{
 padding:10px 20px;
 border:none;
@@ -161,97 +137,63 @@ color:white;
 font-weight:600;
 cursor:pointer;
 }
-
 button:hover{
 background:var(--primary-dark);
 }
-
 a{color:#006edc;}
-
 @keyframes fadeIn{
 from{opacity:0;transform:translateY(6px);}
 to{opacity:1;transform:translateY(0);}
 }
-
 </style>
 </head>
-
 <body>
 
-<!-- UPDATE PAGE -->
-
+<!-- UPDATE SCREEN -->
 <div id="update-screen">
-
 <h2>Improved to 1.2.1 Version!</h2>
-
 <div style="line-height:1.7;font-size:15px;">
-
 ✅ 1. Anti-spam cooldown<br>
 ✅ 2. Message length limit<br>
 ✅ 3. Auto link detection<br>
 ✅ 5. “User joined chat” system message<br>
 ✅ Typing indicator<br>
 ✅ Message reactions<br><br>
-
 — Dev <b>parrotxie</b>
-
 </div>
-
 <button onclick="enterLogin()">Continue</button>
-
 </div>
 
 <!-- LOGIN PAGE -->
-
 <div id="nickname-screen">
-
 <h2>Enter your name</h2>
-
 <input id="nickname" placeholder="Name">
-
 <button onclick="startChat()">Join Chat</button>
-
 </div>
 
 <!-- CHAT -->
-
 <div id="chat-container">
-
 <div id="messages-wrapper">
-
 <div id="messages"></div>
-
 <div id="typing" class="typing"></div>
-
 </div>
-
 <div id="input-area">
-
 <form id="chat-form">
-
 <input id="message" placeholder="Type message">
-
 <button type="submit">Send</button>
-
 </form>
-
 </div>
-
 </div>
 
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-
 <script>
-
 const SUPABASE_URL="https://yrtqjhtyaguersnatqbe.supabase.co";
-
 const SUPABASE_KEY="eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InlydHFqaHR5YWd1ZXJzbmF0cWJlIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzI3Mzc3NjUsImV4cCI6MjA4ODMxMzc2NX0.EABgCVRaTm0YhIOTUJmxtHdSqelTI-VNH6xI8tqjhV8";
 
 const {createClient}=supabase;
 const supabaseClient=createClient(SUPABASE_URL,SUPABASE_KEY);
 
 let currentUser=null;
-
 const messagesDiv=document.getElementById("messages");
 const wrapper=document.getElementById("messages-wrapper");
 const form=document.getElementById("chat-form");
@@ -262,30 +204,32 @@ let lastMessageTime=0;
 const MESSAGE_COOLDOWN=800;
 const MAX_LENGTH=400;
 
+// ENTER LOGIN
 function enterLogin(){
 document.getElementById("update-screen").style.display="none";
 document.getElementById("nickname-screen").style.display="flex";
 }
 
+// FORMAT TIME
 function formatTime(date){
 const d=new Date(date);
 return String(d.getHours()).padStart(2,'0')+":"+String(d.getMinutes()).padStart(2,'0');
 }
 
+// LINKIFY
 function linkify(text){
 return text.replace(/(https?:\/\/[^\s]+)/g,'<a href="$1" target="_blank">$1</a>');
 }
 
+// START CHAT
 function startChat(){
-
 const nick=document.getElementById("nickname").value.trim();
 if(!nick) return alert("Enter a name");
-
 currentUser=nick;
-
 document.getElementById("nickname-screen").style.display="none";
 document.getElementById("chat-container").style.display="flex";
 
+// SYSTEM JOIN MESSAGE
 addMessage({
 name:"System",
 content:nick+" joined the chat",
@@ -296,144 +240,99 @@ loadMessages();
 subscribeRealtime();
 }
 
+// LOAD LATEST MESSAGES
 async function loadMessages(){
-
-const {data}=await supabaseClient
+const { data } = await supabaseClient
 .from("messages")
 .select("*")
-.order("created_at",{ascending:true})
-.limit(120);
+.order("created_at",{ascending:false}) // newest first
+.limit(100);
 
-data.forEach(addMessage);
+data.reverse().forEach(addMessage); // oldest → newest visually
 scrollBottom();
 }
 
+// ADD MESSAGE
 function addMessage(row){
-
 const div=document.createElement("div");
-
 div.className="message "+(row.name===currentUser?"sent":"received");
-
 const time=formatTime(row.created_at);
 
 div.innerHTML=`
-
 <button class="time-btn">${time}</button>
-
 <div class="name">${row.name}</div>
-
 <div>${linkify(row.content)}</div>
-
 <div class="reactions">
-
 <span class="reaction-btn" data-emoji="✅" data-count="0">✅</span>
 <span class="reaction-btn" data-emoji="❌" data-count="0">❌</span>
 <span class="reaction-btn" data-emoji="😂" data-count="0">😂</span>
-
 </div>
-
 `;
 
 div.querySelectorAll(".reaction-btn").forEach(btn=>{
-
 btn.onclick=()=>{
-
 let count=parseInt(btn.dataset.count);
-
 count++;
-
 btn.dataset.count=count;
-
 btn.textContent=btn.dataset.emoji+" "+count;
-
 };
-
 });
 
 messagesDiv.appendChild(div);
 scrollBottom();
 }
 
-function scrollBottom(){
-wrapper.scrollTop=wrapper.scrollHeight;
-}
+// SCROLL TO BOTTOM
+function scrollBottom(){ wrapper.scrollTop=wrapper.scrollHeight; }
 
+// SUBSCRIBE REALTIME (ignore own messages to prevent duplicates)
 function subscribeRealtime(){
-
 supabaseClient
 .channel("public:messages")
 .on("postgres_changes",{event:"INSERT",schema:"public",table:"messages"},payload=>{
-
-if(payload.new.name!==currentUser){
+if(payload.new.name !== currentUser){ // skip own messages
 addMessage(payload.new);
 }
-
 })
 .subscribe();
 }
 
+// SEND MESSAGE
 form.addEventListener("submit",async e=>{
-
 e.preventDefault();
-
 const now=Date.now();
-
 if(now-lastMessageTime<MESSAGE_COOLDOWN) return;
-
 lastMessageTime=now;
-
 let content=input.value.trim();
-
 if(!content) return;
+if(content.length > MAX_LENGTH){ alert("Message too long"); return; }
 
-if(content.length>MAX_LENGTH){
-alert("Message too long");
-return;
-}
-
-addMessage({
-name:currentUser,
-content,
-created_at:new Date()
-});
-
+// show optimistic message
+addMessage({name:currentUser,content,created_at:new Date()});
 input.value="";
 
-await supabaseClient
-.from("messages")
-.insert({name:currentUser,content});
-
+// insert into Supabase
+await supabaseClient.from("messages").insert({name:currentUser,content});
 });
 
+// TYPING INDICATOR
 input.addEventListener("input",()=>{
-
-supabaseClient.channel("typing")
-.send({
+supabaseClient.channel("typing").send({
 type:"broadcast",
 event:"typing",
 payload:{user:currentUser}
 });
-
 });
 
 supabaseClient
 .channel("typing")
 .on("broadcast",{event:"typing"},payload=>{
-
 if(payload.payload.user!==currentUser){
-
 typingDiv.textContent=payload.payload.user+" is typing...";
-
-setTimeout(()=>{
-typingDiv.textContent="";
-},1500);
-
+setTimeout(()=>{typingDiv.textContent="";},1500);
 }
-
 })
 .subscribe();
-
 </script>
-
 </body>
 </html>
