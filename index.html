@@ -94,19 +94,6 @@ cursor:pointer;
 background:rgba(255,255,255,0.25);
 color:white;
 }
-.reactions{
-margin-top:5px;
-display:flex;
-gap:6px;
-}
-.reaction-btn{
-cursor:pointer;
-font-size:14px;
-padding:2px 6px;
-border-radius:10px;
-background:rgba(0,0,0,0.1);
-user-select:none;
-}
 .typing{
 font-size:12px;
 opacity:.7;
@@ -121,12 +108,13 @@ form{
 display:flex;
 gap:10px;
 }
-input{
+input, textarea{
 flex:1;
 padding:12px;
 border-radius:20px;
 border:1px solid #ddd;
 font-size:16px;
+resize:none;
 }
 button{
 padding:10px 20px;
@@ -157,8 +145,7 @@ to{opacity:1;transform:translateY(0);}
 ✅ 2. Message length limit<br>
 ✅ 3. Auto link detection<br>
 ✅ 5. “User joined chat” system message<br>
-✅ Typing indicator<br>
-✅ Message reactions<br><br>
+✅ Typing indicator<br><br>
 — Dev <b>parrotxie</b>
 </div>
 <button onclick="enterLogin()">Continue</button>
@@ -179,7 +166,7 @@ to{opacity:1;transform:translateY(0);}
 </div>
 <div id="input-area">
 <form id="chat-form">
-<input id="message" placeholder="Type message">
+<textarea id="message" placeholder="Type message" rows="1"></textarea>
 <button type="submit">Send</button>
 </form>
 </div>
@@ -245,10 +232,10 @@ async function loadMessages(){
 const { data } = await supabaseClient
 .from("messages")
 .select("*")
-.order("created_at",{ascending:false}) // newest first
+.order("created_at",{ascending:false})
 .limit(100);
 
-data.reverse().forEach(addMessage); // oldest → newest visually
+data.reverse().forEach(addMessage);
 scrollBottom();
 }
 
@@ -262,21 +249,7 @@ div.innerHTML=`
 <button class="time-btn">${time}</button>
 <div class="name">${row.name}</div>
 <div>${linkify(row.content)}</div>
-<div class="reactions">
-<span class="reaction-btn" data-emoji="✅" data-count="0">✅</span>
-<span class="reaction-btn" data-emoji="❌" data-count="0">❌</span>
-<span class="reaction-btn" data-emoji="😂" data-count="0">😂</span>
-</div>
 `;
-
-div.querySelectorAll(".reaction-btn").forEach(btn=>{
-btn.onclick=()=>{
-let count=parseInt(btn.dataset.count);
-count++;
-btn.dataset.count=count;
-btn.textContent=btn.dataset.emoji+" "+count;
-};
-});
 
 messagesDiv.appendChild(div);
 scrollBottom();
@@ -285,12 +258,12 @@ scrollBottom();
 // SCROLL TO BOTTOM
 function scrollBottom(){ wrapper.scrollTop=wrapper.scrollHeight; }
 
-// SUBSCRIBE REALTIME (ignore own messages to prevent duplicates)
+// SUBSCRIBE REALTIME
 function subscribeRealtime(){
 supabaseClient
 .channel("public:messages")
 .on("postgres_changes",{event:"INSERT",schema:"public",table:"messages"},payload=>{
-if(payload.new.name !== currentUser){ // skip own messages
+if(payload.new.name !== currentUser){
 addMessage(payload.new);
 }
 })
@@ -300,6 +273,10 @@ addMessage(payload.new);
 // SEND MESSAGE
 form.addEventListener("submit",async e=>{
 e.preventDefault();
+sendMessage();
+});
+
+function sendMessage(){
 const now=Date.now();
 if(now-lastMessageTime<MESSAGE_COOLDOWN) return;
 lastMessageTime=now;
@@ -312,7 +289,15 @@ addMessage({name:currentUser,content,created_at:new Date()});
 input.value="";
 
 // insert into Supabase
-await supabaseClient.from("messages").insert({name:currentUser,content});
+supabaseClient.from("messages").insert({name:currentUser,content});
+}
+
+// SHIFT+ENTER NEW LINE, ENTER SEND
+input.addEventListener("keydown", e=>{
+if(e.key==="Enter" && !e.shiftKey){
+e.preventDefault();
+sendMessage();
+}
 });
 
 // TYPING INDICATOR
