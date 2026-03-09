@@ -36,12 +36,28 @@ flex-direction:column;
 overflow:hidden;
 }
 
+/* GLOBAL THEME BUTTON */
+#theme-toggle{
+position:fixed;
+top:15px;
+right:15px;
+z-index:9999;
+padding:8px 14px;
+border:none;
+border-radius:10px;
+cursor:pointer;
+background:var(--primary);
+color:white;
+font-weight:600;
+box-shadow:0 3px 10px rgba(0,0,0,0.25);
+}
+
 /* UPDATE SCREEN */
 #update-screen{
 flex:1;
 display:flex;
 flex-direction:column;
-justify-content:center;
+justify-content:flex-start;
 align-items:center;
 gap:20px;
 padding:40px;
@@ -49,33 +65,25 @@ text-align:left;
 position:relative;
 background:var(--update-bg);
 border-radius:10px;
-max-width:480px;
+max-width:520px;
 margin:40px auto;
 box-shadow:0 4px 15px rgba(0,0,0,0.2);
-}
-
-/* Dark/Light toggle button */
-#theme-toggle{
-position:absolute;
-top:20px;
-right:20px;
-padding:6px 12px;
-border:none;
-border-radius:8px;
-cursor:pointer;
-background:var(--primary);
-color:white;
-font-weight:600;
+overflow:hidden;
 }
 
 #update-log{
 line-height:1.7;
 font-size:15px;
-max-width:420px;
+max-width:460px;
+overflow-y:auto;
+max-height:300px;
+padding-right:10px;
 }
 
-/* show/hide old versions */
-#older-versions{display:none; margin-top:10px;}
+#older-versions{
+display:none;
+margin-top:10px;
+}
 
 /* LOGIN */
 #nickname-screen{
@@ -160,15 +168,21 @@ opacity:.85;
 
 .reaction-panel{
 display:none;
-gap:10px;
+flex-direction:column;
+gap:6px;
 margin-top:6px;
 background:#f0f0f0;
-padding:6px;
+padding:8px;
 border-radius:10px;
 width:fit-content;
 }
 
-.reaction-panel span{
+.reaction-row{
+display:flex;
+gap:8px;
+}
+
+.reaction-row span{
 cursor:pointer;
 font-size:18px;
 }
@@ -227,20 +241,35 @@ to{opacity:1;transform:translateY(0);}
 
 <body>
 
+<button id="theme-toggle">Dark Mode</button>
+
 <!-- UPDATE SCREEN -->
 <div id="update-screen">
-<button id="theme-toggle">Dark Mode</button>
-<h2>Improved to 1.2.3 Version!</h2>
+
+<h2>Improved to 1.2.4 Version!</h2>
+
 <div id="update-log">
+
 <b>This Update:</b><br><br>
-✅ more emojis<br>
-✅ Dark&Light mode<br>
-✅ Update Panel<br>
-✅ Minor bug fixs<br><br>
+
+✅ Theme toggle always visible<br>
+✅ Persistent dark/light mode<br>
+✅ Second emoji reaction row<br>
+✅ Scrollable update log panel<br>
+✅ Reaction panel improvements<br>
+✅ Duplicate reaction protection<br>
+✅ Minor bug fixes<br><br>
 
 <button id="show-all-btn">Show All Versions</button>
 
 <div id="older-versions">
+
+<b>1.2.3</b><br>
+✅ more emojis<br>
+✅ Dark&Light mode<br>
+✅ Update Panel<br>
+✅ Minor bug fixes<br><br>
+
 <b>1.2.2</b><br>
 ✅ Click message to open reaction panel<br>
 ✅ Reactions stored in database<br>
@@ -248,17 +277,21 @@ to{opacity:1;transform:translateY(0);}
 ✅ Shows who reacted<br>
 ✅ Realtime reaction updates<br>
 ⚠️ Welcome Message Deleted Due To Bugs<br><br>
+
 <b>1.2.1</b><br>
 ✅ Anti-spam cooldown<br>
 ✅ Message length limit<br>
 ✅ Auto link detection<br>
 ✅ Typing indicator<br>
 ✅ Message reactions<br><br>
+
 — Dev <b>parrotxie</b>
+
 </div>
 </div>
 
 <button onclick="enterLogin()">Continue</button>
+
 </div>
 
 <!-- LOGIN -->
@@ -270,20 +303,25 @@ to{opacity:1;transform:translateY(0);}
 
 <!-- CHAT -->
 <div id="chat-container">
+
 <div id="messages-wrapper">
 <div id="messages"></div>
 <div id="typing" class="typing"></div>
 </div>
+
 <div id="input-area">
 <form id="chat-form">
 <input id="message" placeholder="Type message">
 <button type="submit">Send</button>
 </form>
 </div>
+
 </div>
 
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+
 <script>
+
 const SUPABASE_URL="https://yrtqjhtyaguersnatqbe.supabase.co";
 const SUPABASE_KEY="eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InlydHFqaHR5YWd1ZXJzbmF0cWJlIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzI3Mzc3NjUsImV4cCI6MjA4ODMxMzc2NX0.EABgCVRaTm0YhIOTUJmxtHdSqelTI-VNH6xI8tqjhV8";
 
@@ -291,86 +329,135 @@ const {createClient}=supabase;
 const supabaseClient=createClient(SUPABASE_URL,SUPABASE_KEY);
 
 let currentUser=null;
+
 const messagesDiv=document.getElementById("messages");
 const wrapper=document.getElementById("messages-wrapper");
 const form=document.getElementById("chat-form");
 const input=document.getElementById("message");
 const typingDiv=document.getElementById("typing");
 
-/* enter login */
-function enterLogin(){
-document.getElementById("update-screen").style.display="none";
-document.getElementById("nickname-screen").style.display="flex";
+/* THEME */
+
+const themeBtn=document.getElementById("theme-toggle");
+
+if(localStorage.getItem("theme")==="dark"){
+document.body.classList.add("dark");
+themeBtn.textContent="Light Mode";
 }
 
-/* Dark/Light toggle */
-const themeBtn=document.getElementById("theme-toggle");
 themeBtn.onclick=()=>{
 document.body.classList.toggle("dark");
-themeBtn.textContent=document.body.classList.contains("dark")?"Light Mode":"Dark Mode";
+
+if(document.body.classList.contains("dark")){
+localStorage.setItem("theme","dark");
+themeBtn.textContent="Light Mode";
+}else{
+localStorage.setItem("theme","light");
+themeBtn.textContent="Dark Mode";
+}
 };
 
-/* Show all versions */
+/* show versions */
+
 const showAllBtn=document.getElementById("show-all-btn");
 showAllBtn.onclick=()=>{
 document.getElementById("older-versions").style.display="block";
 showAllBtn.style.display="none";
 };
 
-/* time format */
+/* navigation */
+
+function enterLogin(){
+document.getElementById("update-screen").style.display="none";
+document.getElementById("nickname-screen").style.display="flex";
+}
+
+/* helpers */
+
 function formatTime(date){
 const d=new Date(date);
 return String(d.getHours()).padStart(2,'0')+":"+String(d.getMinutes()).padStart(2,'0');
 }
 
-/* linkify */
 function linkify(text){
 return text.replace(/(https?:\/\/[^\s]+)/g,'<a href="$1" target="_blank">$1</a>');
 }
 
 /* start chat */
+
 function startChat(){
+
 const nick=document.getElementById("nickname").value.trim();
 if(!nick) return alert("Enter a name");
+
 currentUser=nick;
+
 document.getElementById("nickname-screen").style.display="none";
 document.getElementById("chat-container").style.display="flex";
+
 loadMessages();
 subscribeRealtime();
 }
 
 /* load messages */
+
 async function loadMessages(){
+
 const {data}=await supabaseClient
 .from("messages")
 .select("*")
 .order("created_at",{ascending:false})
 .limit(100);
+
 data.reverse().forEach(addMessage);
 scrollBottom();
 }
 
 /* add message */
+
 function addMessage(row){
+
 const div=document.createElement("div");
 div.className="message "+(row.name===currentUser?"sent":"received");
 div.dataset.id=row.id;
+
 const time=formatTime(row.created_at);
+
 div.innerHTML=`
 <button class="time-btn">${time}</button>
 <div class="name">${row.name}</div>
 <div>${linkify(row.content)}</div>
+
 <div class="reactions"></div>
+
 <div class="reaction-panel">
-  <span data-emoji="✅">✅</span>
-  <span data-emoji="❌">❌</span>
-  <span data-emoji="😂">😂</span>
-  <span data-emoji="❓">❓</span>
-  <span data-emoji="🔥">🔥</span>
+
+<div class="reaction-row">
+<span data-emoji="✅">✅</span>
+<span data-emoji="❌">❌</span>
+<span data-emoji="😂">😂</span>
+<span data-emoji="❓">❓</span>
+<span data-emoji="🔥">🔥</span>
+</div>
+
+<div class="reaction-row">
+<span data-emoji="👍">👍</span>
+<span data-emoji="👎">👎</span>
+<span data-emoji="🤣">🤣</span>
+<span data-emoji="😢">😢</span>
+<span data-emoji="😭">😭</span>
+</div>
+
 </div>
 `;
+
 const panel=div.querySelector(".reaction-panel");
-div.onclick=()=>{panel.style.display=panel.style.display==="flex"?"none":"flex";};
+
+div.onclick=()=>{
+document.querySelectorAll(".reaction-panel").forEach(p=>p.style.display="none");
+panel.style.display="flex";
+};
+
 panel.querySelectorAll("span").forEach(btn=>{
 btn.onclick=(e)=>{
 e.stopPropagation();
@@ -378,47 +465,71 @@ addReaction(row.id,btn.dataset.emoji);
 panel.style.display="none";
 };
 });
+
 messagesDiv.appendChild(div);
+
 loadReactions(row.id,div);
 scrollBottom();
 }
 
-/* load reactions */
+/* reactions */
+
 async function loadReactions(messageId,messageDiv){
+
 const {data}=await supabaseClient
 .from("reactions")
 .select("*")
 .eq("message_id",messageId);
+
 const reactionsDiv=messageDiv.querySelector(".reactions");
+
 const grouped={};
+
 data.forEach(r=>{
 if(!grouped[r.emoji]) grouped[r.emoji]=[];
 grouped[r.emoji].push(r.username);
 });
+
 reactionsDiv.innerHTML="";
+
 for(const emoji in grouped){
+
 const users=grouped[emoji];
+
 const span=document.createElement("div");
 span.textContent=emoji+" "+users.length+" ("+users.join(", ")+")";
+
 reactionsDiv.appendChild(span);
 }
 }
 
-/* add reaction */
 async function addReaction(messageId,emoji){
+
+const {data:existing}=await supabaseClient
+.from("reactions")
+.select("*")
+.eq("message_id",messageId)
+.eq("username",currentUser)
+.eq("emoji",emoji);
+
+if(existing.length>0) return;
+
 await supabaseClient
 .from("reactions")
-.insert({message_id:messageId,username:currentUser,emoji:emoji});
+.insert({
+message_id:messageId,
+username:currentUser,
+emoji:emoji
+});
 }
 
-/* scroll */
-function scrollBottom(){wrapper.scrollTop=wrapper.scrollHeight;}
-
 /* realtime */
+
 function subscribeRealtime(){
+
 supabaseClient.channel("messages")
 .on("postgres_changes",{event:"INSERT",schema:"public",table:"messages"},payload=>{
-if(payload.new.name!==currentUser)addMessage(payload.new);
+if(payload.new.name!==currentUser) addMessage(payload.new);
 })
 .subscribe();
 
@@ -432,28 +543,50 @@ if(message) loadReactions(messageId,message);
 }
 
 /* send message */
+
 form.addEventListener("submit",async e=>{
+
 e.preventDefault();
+
 let content=input.value.trim();
 if(!content) return;
+
 input.value="";
-const {data}=await supabaseClient.from("messages").insert({name:currentUser,content}).select().single();
+
+const {data}=await supabaseClient
+.from("messages")
+.insert({name:currentUser,content})
+.select()
+.single();
+
 addMessage(data);
+
 });
 
 /* typing */
+
 input.addEventListener("input",()=>{
-supabaseClient.channel("typing").send({type:"broadcast",event:"typing",payload:{user:currentUser}});
+supabaseClient.channel("typing").send({
+type:"broadcast",
+event:"typing",
+payload:{user:currentUser}
+});
 });
 
 supabaseClient.channel("typing")
 .on("broadcast",{event:"typing"},payload=>{
 if(payload.payload.user!==currentUser){
 typingDiv.textContent=payload.payload.user+" is typing...";
-setTimeout(()=>{typingDiv.textContent="";},1500);
+setTimeout(()=>typingDiv.textContent="",1500);
 }
 })
 .subscribe();
+
+/* scroll */
+
+function scrollBottom(){
+wrapper.scrollTop=wrapper.scrollHeight;
+}
 
 </script>
 </body>
